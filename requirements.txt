@@ -1,0 +1,7 @@
+awkward
+h5py
+matplotlib
+mplhep
+notebook
+numpy
+vector
