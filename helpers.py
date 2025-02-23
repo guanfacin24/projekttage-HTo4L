@@ -33,17 +33,5 @@ def load_dataset(h5file: h5py.File):
 
     return {"muons": muons, "electrons": electrons}
 
-### MC weights, taken from
-### https://github.com/cms-opendata-analyses/HiggsToFourLeptonsNanoAODOutreachAnalysis/blob/master/skim.cxx
-lumi = 11.58 * 1000
-sf_Z4l = 1.386
-weights = {
-    "SMHiggsToZZTo4L": 0.0065 / 299973 * lumi,
-    "ZZTo4mu": 0.077 / 1499064 * sf_Z4l * lumi,
-    "ZZTo4e": 0.077 / 1499093 * sf_Z4l * lumi,
-    "ZZTo2e2mu": 0.18 / 1497445 * sf_Z4l * lumi,
-    "Run2012B_DoubleMuParked": 1.0,
-    "Run2012C_DoubleMuParked": 1.0,
-    "Run2012B_DoubleElectron": 1.0,
-    "Run2012C_DoubleElectron": 1.0
-}
+def stack(a1: ak.Array, a2: ak.Array):
+    return ak.concatenate((ak.unflatten(a1, 1), ak.unflatten(a2, 1)), axis = 1)
