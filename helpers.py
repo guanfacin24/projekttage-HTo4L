@@ -381,9 +381,9 @@ def perform_all_cuts(electrons, muons):
     ### dR cut
     passes_dRcut = (dR1 > 0.02) & (dR2 > 0.02)
     
-    passes_Zcuts = passes_Z1 & passes_Z2 & passes_dRcut
-    electrons = electrons[passes_Zcuts]
-    muons = muons[passes_Zcuts]
+    # passes_Zcuts = passes_Z1 & passes_Z2 & passes_dRcut
+    # electrons = electrons[passes_Zcuts]
+    # muons = muons[passes_Zcuts]
     
     leptons = ak.concatenate((muons, electrons), axis = 1)
     mass = ak.sum(leptons.to_xyzt(), axis = 1).mass
