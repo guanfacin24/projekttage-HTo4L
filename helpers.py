@@ -389,3 +389,32 @@ def perform_all_cuts(electrons, muons):
     mass = ak.sum(leptons.to_xyzt(), axis = 1).mass
     
     return mass
+
+def plot_kinematics(*args, label = None):
+    fig, (axpt, axeta) = plt.subplots(1, 2, figsize = (35, 9), dpi = 40)
+
+    mplhep.cms.text("Open Data", ax = axpt)
+    mplhep.cms.text("Open Data", ax = axeta)
+    
+    binspt = np.arange(0, 101, 1)
+    binseta = np.arange(-3, 3.2, .2)
+    for i, arg in enumerate(args):
+        pt = ak.ravel(arg["pt"])
+        eta = ak.ravel(arg["eta"])
+        if label is not None: l = label[i]
+        else: l = None
+        axpt.hist(np.clip(pt, binspt[0], binspt[-1]), binspt, histtype = "step", linewidth = 3, label = l)
+        axeta.hist(np.clip(eta, binseta[0], binseta[-1]), binseta, histtype = "step", linewidth = 3, label = l)
+
+    axpt.set_xlabel("$p_T$ [GeV]")
+    axpt.set_ylabel("Counts / bin")
+    if label is not None: axpt.legend()
+    axpt.set_title("$11.6 \\ \\text{fb}^{-1}$", loc = "right")
+
+    axeta.set_xlabel("$\\eta$")
+    axeta.set_ylabel("Counts / bin")
+    if label is not None: axeta.legend()
+    axeta.set_title("$11.6 \\ \\text{fb}^{-1}$", loc = "right")
+
+    fig.tight_layout(h_pad = 0)
+    plt.show()
