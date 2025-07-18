@@ -77,7 +77,6 @@ def load_data(filepath):
 
     for file in os.listdir(filepath):
         h5file = h5py.File(os.path.join(filepath, file), "r")
-        # print(h5file.keys())
         nMuons.append(ak.from_regular(h5file["nMuons"][:], axis = 0))
         for i, kinVar in enumerate(kinVars):
             kinMuons[i].append(ak.from_regular(h5file["Muon_"+kinVar][:], axis = 0))
@@ -418,3 +417,65 @@ def plot_kinematics(*args, label = None):
 
     fig.tight_layout(h_pad = 0)
     plt.show()
+
+def load_files(filedir):
+    files = os.listdir(filedir)
+    output = {}
+    for i, f in enumerate(files):
+        data = h5py.File(os.path.join(filedir, f), "r")
+        output[f[:-3]] = data
+
+    return output
+
+def plot_m4l_dvmc(data, sim):
+
+    ### Lade Skalierungsfaktoren
+    with open("weights.yaml", "r") as wfile: weights = yaml.safe_load(wfile)
+
+    ### Erstelle Histogramme (Start und Stop der Bins sind hier willkürlich)
+    if not len(bins)>0:
+        bins = np.linspace(70, 180, 36)
+    bin_width = bins[1] - bins[0]
+
+    leptons = ak.concatenate((data[0], data[1]), axis = 1)
+    mass = ak.sum(leptons.to_xyzt(), axis = 1).mass
+    hist_data = np.histogram(leptons, bins)[0]
+
+    hists_sim = {}
+    for process in sim:
+        leptons = ak.concatenate((sim[process]["electrons"], sim[process]["muons"]), axis = 1)
+        mass = ak.sum(leptons.to_xyzt(), axis = 1).mass
+        hist_sim[process] = np.histogram(leptons, bins)[0] * weights[process]
+    
+
+    DY = hists_sim["ZZTo4mu"] + hists_sim["ZZTo4e"] + hists_sim["ZZTo2e2mu"]
+    S = hists_sim["SMHiggsToZZTo4L"]
+    stat_mc = np.sqrt(DY + S)
+    stat_mc_down = DY + S - stat_mc
+    stat_mc_up = DY + S + stat_mc
+
+    stat_data = np.sqrt(hist_data)
+
+    plt.figure(dpi = 60)
+    mplhep.cms.text("Open Data")
+    # mplhep.cms.lumitext(r"$11.6$ $\text{fb}^{-1}$")
+    plt.stackplot(
+        bins[:-1],
+        list(DY), list(S),
+        labels = ["Drell-Yan", "$H \\rightarrow ZZ \\rightarrow 4\\ell$"],
+        step = "post"
+    )
+    plt.fill_between(
+        bins[:-1], stat_mc_down, stat_mc_up, 
+        step = "post", hatch = "///", alpha = 0.5, facecolor = "none", edgecolor = "black", linewidth = 0
+    )
+    plt.errorbar(
+        list(bins[:-1] + bin_width / 2), list(hist_data), yerr = list(stat_data), fmt = "o", color = "black"
+    )
+    plt.xlabel("$m_{4\\ell}$ [GeV]")
+    plt.ylabel("Counts/bin")
+    plt.xlim(70, 180)
+    plt.ylim(bottom = 0)
+    plt.legend()
+    plt.show()
+    
