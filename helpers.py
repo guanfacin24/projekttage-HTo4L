@@ -304,13 +304,14 @@ def plot_m4l_bkg(
     plt.show()
 
 
-def plot_m4l(electrons, muons, bins = []):
+def plot_m4l(electrons, muons, nbins = 37):
+
+    ### Berechne invariante Masse
     leptons = ak.concatenate((muons, electrons), axis = 1)
     mass = ak.sum(leptons.to_xyzt(), axis = 1).mass
     
-    ### Erstelle Histogramme (Start und Stop der Bins sind hier willkürlich)
-    if not len(bins)>0:
-        bins = np.linspace(60, 180, 36)
+    ### Erstelle Histogramme
+    bins = np.linspace(70, 180, nbins)
     bin_width = bins[1] - bins[0]
     data, binedges = np.histogram(mass, bins)
     stat_data = np.sqrt(data)
@@ -418,56 +419,54 @@ def plot_kinematics(*args, label = None):
     fig.tight_layout(h_pad = 0)
     plt.show()
 
-def load_files(filedir):
+def load_sim(filedir):
     files = os.listdir(filedir)
     output = {}
     for i, f in enumerate(files):
         data = h5py.File(os.path.join(filedir, f), "r")
+        data = load_dataset_old(data)
         output[f[:-3]] = data
 
     return output
 
-def plot_m4l_dvmc(data, sim):
-
+def plot_m4l_dvmc(data, sim, nbins = 37):
+    
     ### Lade Skalierungsfaktoren
     with open("weights.yaml", "r") as wfile: weights = yaml.safe_load(wfile)
 
-    ### Erstelle Histogramme (Start und Stop der Bins sind hier willkürlich)
-    if not len(bins)>0:
-        bins = np.linspace(70, 180, 36)
+    ### Erstelle Histogramme
+    bins = np.linspace(70, 180, nbins)
     bin_width = bins[1] - bins[0]
 
     leptons = ak.concatenate((data[0], data[1]), axis = 1)
     mass = ak.sum(leptons.to_xyzt(), axis = 1).mass
-    hist_data = np.histogram(leptons, bins)[0]
+    hist_data = np.histogram(mass, bins)[0]
 
-    hists_sim = {}
-    for process in sim:
-        leptons = ak.concatenate((sim[process]["electrons"], sim[process]["muons"]), axis = 1)
+    hist_bkg = 0
+    hist_sig = 0
+    for process in sim[0].keys():
+        leptons = ak.concatenate((sim[0][process], sim[1][process]), axis = 1)
         mass = ak.sum(leptons.to_xyzt(), axis = 1).mass
-        hist_sim[process] = np.histogram(leptons, bins)[0] * weights[process]
-    
+        if process == "SMHiggsToZZTo4L":
+            hist_sig = np.histogram(mass, bins)[0] * weights[process]
+        else:
+            hist_bkg = hist_bkg + np.histogram(mass, bins)[0] * weights[process]
 
-    DY = hists_sim["ZZTo4mu"] + hists_sim["ZZTo4e"] + hists_sim["ZZTo2e2mu"]
-    S = hists_sim["SMHiggsToZZTo4L"]
-    stat_mc = np.sqrt(DY + S)
-    stat_mc_down = DY + S - stat_mc
-    stat_mc_up = DY + S + stat_mc
 
     stat_data = np.sqrt(hist_data)
 
+    ### Konvertiere Histogramme zu Listen, sonst funktioniert plt.stackplot() nicht
+    hist_bkg = list(np.append(hist_bkg, hist_bkg[-1]))
+    hist_sig = list(np.append(hist_sig, hist_sig[-1]))
+
+    ### Erstelle den Plot
     plt.figure(dpi = 60)
     mplhep.cms.text("Open Data")
-    # mplhep.cms.lumitext(r"$11.6$ $\text{fb}^{-1}$")
+    mplhep.cms.lumitext(r"$11.6$ $\text{fb}^{-1}$")
     plt.stackplot(
-        bins[:-1],
-        list(DY), list(S),
+        bins, hist_bkg, hist_sig,
         labels = ["Drell-Yan", "$H \\rightarrow ZZ \\rightarrow 4\\ell$"],
         step = "post"
-    )
-    plt.fill_between(
-        bins[:-1], stat_mc_down, stat_mc_up, 
-        step = "post", hatch = "///", alpha = 0.5, facecolor = "none", edgecolor = "black", linewidth = 0
     )
     plt.errorbar(
         list(bins[:-1] + bin_width / 2), list(hist_data), yerr = list(stat_data), fmt = "o", color = "black"
